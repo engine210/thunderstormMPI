@@ -10,9 +10,18 @@
 #include <atomic>
 #include <unistd.h>
 #include <ctime>
+#include <sstream>  // for string streams 
 
 using namespace std;
 namespace fs = filesystem;
+
+// The list of the input files
+vector<string> file_list;
+
+// The input data directory path
+string input_dir;
+// The output data directory path
+string output_dir;
 
 int total_jobs = 10;
 atomic_int current_jobID;
@@ -43,8 +52,16 @@ void* job_distribute(void* _arg) {
 }
 
 void merge() {
-    string cmd = "awk -F\",\" 'NR==1{printf \"\\\"time\\\",%s,%s,\\\"z\\\",%s,%s,%s,%s,%s\\n\",$2,$3,$4,$5,$6,$7,$8} NR>1{printf \"1,%s,%s,%s,%s,%s,%s,%s,%s\\n\",$1,$2,$3,$4,$5,$6,$7,$8}' layer_100.csv > output.csv";
+    string file_name = file_list[0];
+    string cmd = "awk -F\",\" 'NR==1{printf \"\\\"time\\\",%s,%s,\\\"z\\\",%s,%s,%s,%s,%s\\n\",$2,$3,$4,$5,$6,$7,$8} NR>1{printf \"1,%s,%s,%s,%s,%s,%s,%s,%s\\n\",$2,$3,$1,$4,$5,$6,$7,$8}' " + output_dir + file_name + ".csv > " + output_dir + "output.csv";
     int exec_status = system(cmd.c_str());
+    for (int i = 1; i < file_list.size(); i++) {
+        file_name = file_list[i];
+        ostringstream time; 
+        time << i+1; 
+        string cmd = "awk -F\",\" 'NR>1{printf \"" + time.str() + ",%s,%s,%s,%s,%s,%s,%s,%s\\n\",$2,$3,$1,$4,$5,$6,$7,$8}' " + output_dir + file_name + ".csv >> " + output_dir + "output.csv";
+        int exec_status = system(cmd.c_str());
+    }
 }
 
 int main(int argc, char* argv[]) {
@@ -53,10 +70,8 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &MPI_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_rank);
 
-    // The input data directory path
-    string input_dir = argv[1];
-    // The output data directory path
-    string output_dir = argv[2];
+    input_dir = argv[1];
+    output_dir = argv[2];
 
     cout << "Rank "<< MPI_rank << "/" << MPI_size << endl;
     if (MPI_rank == 0) {
@@ -64,8 +79,6 @@ int main(int argc, char* argv[]) {
         cout << "Output data directory: " << output_dir << endl;
     }
 
-    // The list of the input files
-    vector<string> file_list;
     // reading input file
     for (const auto & entry : fs::directory_iterator(input_dir)) {
         string file_path = entry.path();
@@ -85,6 +98,9 @@ int main(int argc, char* argv[]) {
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    /*
+        TODO: Fix the bug that the program will crash when MPI_size >= number of input file.
+    */
     if (MPI_rank == 0) {
         // create a thread to distribute jobs
         pthread_t thread;
