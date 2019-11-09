@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
 
     int* status = new int[file_list.size()];
     for (int i = rank; i < file_list.size(); i += size) {
-        string cmd = "./xvfb-run-safe /home/sc20/engine210/brc/Fiji.app/ImageJ-linux64 -macro /home/sc20/engine210/brc/code/macro/tsmacro.ijm " + input_dir + file_list[i] + "," + output_dir + file_list[i];
+        string cmd = "./xvfb-run-safe /home/sc20/engine210/brc/Fiji.app/ImageJ-linux64 -macro /home/sc20/engine210/brc/code/macro/tsmacro.ijm " + input_dir + file_list[i] + "," + output_dir + file_list[i] + " > log.txt";
         cout << cmd << endl;
         status[i] = system(cmd.c_str());
     }
