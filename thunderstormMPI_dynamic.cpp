@@ -23,7 +23,7 @@ string input_dir;
 // The output data directory path
 string output_dir;
 
-int total_jobs = 10;
+int total_jobs;
 atomic_int current_jobID;
 int MPI_size;
 int MPI_rank;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
     input_dir = argv[1];
     output_dir = argv[2];
 
-    cout << "Rank "<< MPI_rank << "/" << MPI_size << endl;
+    //cout << "Rank "<< MPI_rank << "/" << MPI_size << endl;
     if (MPI_rank == 0) {
         cout << "Input data directory: " << input_dir << endl;
         cout << "Output data directory: " << output_dir << endl;
@@ -96,6 +96,7 @@ int main(int argc, char* argv[]) {
         cout << "There are " << file_list.size() << " input files." << endl;
     }
 
+    current_jobID = 0;
     MPI_Barrier(MPI_COMM_WORLD);
 
     /*
@@ -108,19 +109,23 @@ int main(int argc, char* argv[]) {
         MPI_Barrier(MPI_COMM_WORLD);
         int job_id;
         int exec_status;
-        while (current_jobID < total_jobs) {
-            job_id = current_jobID++;
-            cout << "Rank " << MPI_rank << " get job " << job_id << endl;
+
+        job_id = current_jobID++;
+        while (job_id < total_jobs) {
+            //cout << "Rank " << MPI_rank << " get job " << job_id << endl;
+            cout << "Rank " << setw(3) << MPI_rank << " get file " << file_list[job_id] << endl;
             string cmd = "./xvfb-run-safe /home/sc20/engine210/brc/Fiji.app/ImageJ-linux64 -macro /home/sc20/engine210/brc/code/macro/tsmacro.ijm " + input_dir + file_list[job_id] + "," + output_dir + file_list[job_id] + " >> log.txt";
             //cout << cmd << endl;
             exec_status = system(cmd.c_str());
-            cout << "Rank " << MPI_rank << " finished job " << job_id << " with return value " << exec_status << endl;
+            //cout << "Rank " << MPI_rank << " finished job " << job_id << " with return value " << exec_status << endl;
+            cout << "Rank " << setw(3) << MPI_rank << " finished processing file " << file_list[job_id] << " with return value " << exec_status << endl;
+            job_id = current_jobID++;
         }
         pthread_join(thread, NULL);
-        cout << "Rank " << MPI_rank << " end processing" << endl;
+        cout << "Rank " << setw(3) << MPI_rank << " end processing" << endl;
 
         // merge data
-        cout << "Rank " << MPI_rank << " start to merge data" << endl;
+        cout << "Rank " << setw(3) << MPI_rank << " start to merge data" << endl;
         merge();
         cout << "Finish merging" << endl;
     }
@@ -132,16 +137,17 @@ int main(int argc, char* argv[]) {
         MPI_Send(&send_buf, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
         MPI_Recv(&job_id, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         while (job_id != -1) {
-            cout << "Rank " << MPI_rank << " get job " << job_id << endl;
+            cout << "Rank " << setw(3) << MPI_rank << " get file " << file_list[job_id] << endl;
             string cmd = "./xvfb-run-safe /home/sc20/engine210/brc/Fiji.app/ImageJ-linux64 -macro /home/sc20/engine210/brc/code/macro/tsmacro.ijm " + input_dir + file_list[job_id] + "," + output_dir + file_list[job_id] + " >> log.txt";
             //cout << cmd << endl;
             exec_status = system(cmd.c_str());
-            cout << "Rank " << MPI_rank << " finished job " << job_id << " with return value " << exec_status << endl;
+            //cout << "Rank " << MPI_rank << " finished job " << job_id << " with return value " << exec_status << endl;
+            cout << "Rank " << setw(3) << MPI_rank << " finished processing file " << file_list[job_id] << " with return value " << exec_status << endl;
 
             MPI_Send(&send_buf, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
             MPI_Recv(&job_id, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
-        cout << "Rank " << MPI_rank << " end" << endl;
+        cout << "Rank " << setw(3) << MPI_rank << " end" << endl;
     }
 
     MPI_Finalize();
