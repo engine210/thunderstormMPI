@@ -70,11 +70,14 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &MPI_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &MPI_rank);
 
+    time_t start_time, end_time;
+
     input_dir = argv[1];
     output_dir = argv[2];
 
     //cout << "Rank "<< MPI_rank << "/" << MPI_size << endl;
     if (MPI_rank == 0) {
+        time(&start_time);
         cout << "Input data directory: " << input_dir << endl;
         cout << "Output data directory: " << output_dir << endl;
     }
@@ -128,6 +131,9 @@ int main(int argc, char* argv[]) {
         cout << "Rank " << setw(3) << MPI_rank << " start to merge data" << endl;
         merge();
         cout << "Finish merging" << endl;
+        time(&end_time);
+        int time_diff = end_time - start_time;
+        printf("Processing time: %02d:%02d:%02d\n", time_diff / 3600, (time_diff%3600)/60, time_diff % 60);
     }
     else {
         int job_id;
